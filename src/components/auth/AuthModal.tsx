@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LoginForm } from './LoginForm';
 import { SignupForm } from './SignupForm';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -15,9 +16,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   defaultMode = 'login' 
 }) => {
   const [mode, setMode] = useState<'login' | 'signup'>(defaultMode);
+  const { redirectToDashboard } = useAuth();
 
   const toggleMode = () => {
     setMode(mode === 'login' ? 'signup' : 'login');
+  };
+
+  const handleAuthSuccess = () => {
+    onClose();
+    redirectToDashboard();
   };
 
   return (
@@ -30,9 +37,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </DialogHeader>
         
         {mode === 'login' ? (
-          <LoginForm onToggleMode={toggleMode} />
+          <LoginForm onToggleMode={toggleMode} onSuccess={handleAuthSuccess} />
         ) : (
-          <SignupForm onToggleMode={toggleMode} />
+          <SignupForm onToggleMode={toggleMode} onSuccess={handleAuthSuccess} />
         )}
       </DialogContent>
     </Dialog>

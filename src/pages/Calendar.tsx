@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { useAuth } from '@/contexts/AuthContext';
+import { apiService } from '@/lib/api';
 import { 
   RefreshCw,
   Calendar as CalendarIcon,
@@ -12,77 +15,79 @@ import {
   Bell,
   CheckCircle2,
   AlertTriangle,
-  ExternalLink
+  ExternalLink,
+  Loader2
 } from 'lucide-react';
 
 export default function Calendar() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [selectedView, setSelectedView] = useState<'calendar' | 'notifications'>('calendar');
+  const { user } = useAuth();
 
-  const upcomingTasks = [
-    {
-      id: 1,
-      title: "Research payment providers",
-      dueDate: "2024-01-18",
-      time: "09:00 AM",
-      assignee: "John Smith",
-      priority: "high",
-      type: "task"
-    },
-    {
-      id: 2,
-      title: "Finalize marketing messaging",
-      dueDate: "2024-01-20",
-      time: "02:00 PM",
-      assignee: "Lisa Chen",
-      priority: "medium",
-      type: "task"
-    },
-    {
-      id: 3,
-      title: "Product Strategy Follow-up",
-      dueDate: "2024-01-22",
-      time: "10:00 AM",
-      assignee: "Team",
-      priority: "high",
-      type: "meeting"
-    }
-  ];
+  // Fetch user tasks
+  const { data: tasksData, isLoading: tasksLoading } = useQuery({
+    queryKey: ['tasks', user?.id],
+    queryFn: () => apiService.getUserTasks(user?.id || ''),
+    enabled: !!user?.id,
+  });
 
+  // Fetch upcoming tasks
+  const { data: upcomingTasksData } = useQuery({
+    queryKey: ['upcoming-tasks', user?.id],
+    queryFn: () => apiService.getUpcomingTasks(user?.id || ''),
+    enabled: !!user?.id,
+  });
+
+  // Fetch overdue tasks
+  const { data: overdueTasksData } = useQuery({
+    queryKey: ['overdue-tasks', user?.id],
+    queryFn: () => apiService.getOverdueTasks(user?.id || ''),
+    enabled: !!user?.id,
+  });
+
+  const tasks = tasksData?.tasks || [];
+  const upcomingTasks = upcomingTasksData?.tasks || [];
+  const overdueTasks = overdueTasksData?.tasks || [];
+
+  // Create notifications from tasks
   const notifications = [
-    {
-      id: 1,
+    ...overdueTasks.map(task => ({
+      id: `overdue-${task.id}`,
+      title: "Task overdue",
+      message: `${task.name} is overdue`,
+      time: "Now",
+      type: "warning" as const,
+      unread: true
+    })),
+    ...upcomingTasks.slice(0, 3).map(task => ({
+      id: `upcoming-${task.id}`,
       title: "Task deadline approaching",
-      message: "Payment provider research due in 2 days",
-      time: "2 hours ago",
-      type: "warning",
+      message: `${task.name} due ${task.deadline ? new Date(task.deadline).toLocaleDateString() : 'soon'}`,
+      time: "1 hour ago",
+      type: "info" as const,
       unread: true
-    },
-    {
-      id: 2,
-      title: "New meeting scheduled",
-      message: "Q1 Planning Review added to calendar",
-      time: "4 hours ago",
-      type: "info",
-      unread: true
-    },
-    {
-      id: 3,
+    })),
+    ...tasks.filter(t => t.status === 'completed').slice(0, 2).map(task => ({
+      id: `completed-${task.id}`,
       title: "Task completed",
-      message: "Timeline documentation updated by Sarah",
-      time: "1 day ago",
-      type: "success",
+      message: `${task.name} has been completed`,
+      time: "2 hours ago",
+      type: "success" as const,
       unread: false
-    },
-    {
-      id: 4,
-      title: "Meeting reminder",
-      message: "Team sync starting in 30 minutes",
-      time: "2 days ago",
-      type: "info",
-      unread: false
-    }
+    }))
   ];
+
+  // Loading state
+  if (tasksLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading calendar...</p>
+        </div>
+      </div>
+    );
+  }
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -244,27 +249,27 @@ export default function Calendar() {
                     {upcomingTasks.map((task) => (
                       <div key={task.id} className="p-3 rounded-lg border bg-card hover:bg-card-hover transition-colors">
                         <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-medium text-sm">{task.title}</h4>
+                          <h4 className="font-medium text-sm">{task.name}</h4>
                           <Badge 
-                            variant={task.type === 'meeting' ? 'default' : 'secondary'}
+                            variant={task.category === 'decision' ? 'default' : 'secondary'}
                             className="text-xs"
                           >
-                            {task.type}
+                            {task.category}
                           </Badge>
                         </div>
                         
                         <div className="text-xs text-muted-foreground space-y-1">
                           <div className="flex items-center gap-1">
                             <CalendarIcon className="w-3 h-3" />
-                            {task.dueDate}
+                            {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No deadline'}
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {task.time}
+                            {task.status}
                           </div>
                           <div className="flex items-center gap-1">
                             <Users className="w-3 h-3" />
-                            {task.assignee}
+                            {task.owner || 'Unassigned'}
                           </div>
                         </div>
                         

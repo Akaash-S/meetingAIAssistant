@@ -1,8 +1,11 @@
 import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { useAuth } from '@/contexts/AuthContext';
+import { apiService } from '@/lib/api';
 import { 
   Select,
   SelectContent,
@@ -27,66 +30,51 @@ import {
   Trash2,
   CheckCircle2,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from 'lucide-react';
 
 export default function Tasks() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  const tasks = [
-    {
-      id: 1,
-      name: "Research payment integration providers",
-      owner: "John Smith",
-      deadline: "2024-01-18",
-      status: "pending",
-      priority: "high",
-      meeting: "Product Strategy Review",
-      created: "2024-01-15"
+  // Fetch user tasks
+  const { data: tasksData, isLoading: tasksLoading } = useQuery({
+    queryKey: ['tasks', user?.id],
+    queryFn: () => apiService.getUserTasks(user?.id || ''),
+    enabled: !!user?.id,
+  });
+
+  // Fetch overdue tasks
+  const { data: overdueTasksData } = useQuery({
+    queryKey: ['overdue-tasks', user?.id],
+    queryFn: () => apiService.getOverdueTasks(user?.id || ''),
+    enabled: !!user?.id,
+  });
+
+  // Complete task mutation
+  const completeTaskMutation = useMutation({
+    mutationFn: (taskId: string) => apiService.completeTask(taskId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['overdue-tasks', user?.id] });
     },
-    {
-      id: 2,
-      name: "Finalize Q1 marketing messaging",
-      owner: "Lisa Chen",
-      deadline: "2024-01-20",
-      status: "in-progress",
-      priority: "medium",
-      meeting: "Product Strategy Review",
-      created: "2024-01-15"
+  });
+
+  // Delete task mutation
+  const deleteTaskMutation = useMutation({
+    mutationFn: (taskId: string) => apiService.deleteTask(taskId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['overdue-tasks', user?.id] });
     },
-    {
-      id: 3,
-      name: "Hire 2 additional developers",
-      owner: "HR Team",
-      deadline: "2024-02-01",
-      status: "pending",
-      priority: "high",
-      meeting: "Product Strategy Review",
-      created: "2024-01-15"
-    },
-    {
-      id: 4,
-      name: "Update project timeline documentation",
-      owner: "Sarah Wilson",
-      deadline: "2024-01-22",
-      status: "completed",
-      priority: "low",
-      meeting: "Weekly Team Sync",
-      created: "2024-01-14"
-    },
-    {
-      id: 5,
-      name: "Schedule stakeholder demo",
-      owner: "Mike Johnson",
-      deadline: "2024-01-25",
-      status: "in-progress",
-      priority: "medium",
-      meeting: "Weekly Team Sync",
-      created: "2024-01-14"
-    }
-  ];
+  });
+
+  const tasks = tasksData?.tasks || [];
+  const overdueTasks = overdueTasksData?.tasks || [];
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -129,7 +117,7 @@ export default function Tasks() {
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         task.owner.toLowerCase().includes(searchTerm.toLowerCase());
+                         (task.owner && task.owner.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
     const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
     
@@ -141,8 +129,30 @@ export default function Tasks() {
     completed: tasks.filter(t => t.status === 'completed').length,
     inProgress: tasks.filter(t => t.status === 'in-progress').length,
     pending: tasks.filter(t => t.status === 'pending').length,
-    overdue: tasks.filter(t => new Date(t.deadline) < new Date() && t.status !== 'completed').length
+    overdue: overdueTasks.length
   };
+
+  const handleCompleteTask = (taskId: string) => {
+    completeTaskMutation.mutate(taskId);
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    if (confirm('Are you sure you want to delete this task?')) {
+      deleteTaskMutation.mutate(taskId);
+    }
+  };
+
+  // Loading state
+  if (tasksLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading tasks...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
@@ -276,36 +286,58 @@ export default function Tasks() {
                       <div>
                         <div>{task.name}</div>
                         <div className="text-xs text-muted-foreground">
-                          Created: {task.created}
+                          Created: {new Date(task.created_at).toLocaleDateString()}
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{task.owner}</TableCell>
+                    <TableCell>{task.owner || 'Unassigned'}</TableCell>
                     <TableCell>
                       <span className={
-                        new Date(task.deadline) < new Date() && task.status !== 'completed'
+                        task.deadline && new Date(task.deadline) < new Date() && task.status !== 'completed'
                           ? 'text-destructive font-medium'
                           : ''
                       }>
-                        {task.deadline}
+                        {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No deadline'}
                       </span>
                     </TableCell>
                     <TableCell>{getPriorityBadge(task.priority)}</TableCell>
                     <TableCell>
-                      <span className="text-sm text-muted-foreground">{task.meeting}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {task.meeting_id ? `Meeting ${task.meeting_id.slice(0, 8)}...` : 'No meeting'}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         {task.status !== 'completed' && (
-                          <Button variant="ghost" size="sm" className="text-success hover:text-success">
-                            <CheckCircle2 className="w-4 h-4" />
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-success hover:text-success"
+                            onClick={() => handleCompleteTask(task.id)}
+                            disabled={completeTaskMutation.isPending}
+                          >
+                            {completeTaskMutation.isPending ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="w-4 h-4" />
+                            )}
                           </Button>
                         )}
                         <Button variant="ghost" size="sm">
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                          <Trash2 className="w-4 h-4" />
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteTask(task.id)}
+                          disabled={deleteTaskMutation.isPending}
+                        >
+                          {deleteTaskMutation.isPending ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
                         </Button>
                       </div>
                     </TableCell>

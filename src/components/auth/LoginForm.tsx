@@ -9,9 +9,10 @@ import { Loader2, Mail, Lock } from 'lucide-react';
 
 interface LoginFormProps {
   onToggleMode: () => void;
+  onSuccess?: () => void;
 }
 
-export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
+export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode, onSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -25,6 +26,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
 
     try {
       await login(email, password);
+      onSuccess?.();
     } catch (error: any) {
       setError(error.message);
     } finally {

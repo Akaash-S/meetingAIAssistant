@@ -7,7 +7,9 @@ import {
   onAuthStateChanged,
   updateProfile
 } from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
 import { auth } from '@/lib/firebase';
+import { userService } from '@/lib/userService';
 
 interface User {
   id: string;
@@ -22,6 +24,7 @@ interface AuthContextType {
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
+  redirectToDashboard: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,9 +40,10 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         const userData: User = {
           id: firebaseUser.uid,
@@ -48,6 +52,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           photoURL: firebaseUser.photoURL || undefined
         };
         setUser(userData);
+        
+        // Automatically register user in backend database
+        try {
+          await userService.handleAuthStateChange(firebaseUser);
+          console.log('User automatically registered in backend database');
+        } catch (error) {
+          console.error('Failed to register user in backend:', error);
+          // Don't break the auth flow if backend registration fails
+        }
       } else {
         setUser(null);
       }
@@ -79,9 +92,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await signOut(auth);
+      navigate('/');
     } catch (error: any) {
       throw new Error(error.message);
     }
+  };
+
+  const redirectToDashboard = () => {
+    navigate('/dashboard');
   };
 
   const value = {
@@ -89,7 +107,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     signup,
     logout,
-    isLoading
+    isLoading,
+    redirectToDashboard
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -5,12 +5,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { AuthModal } from '@/components/auth/AuthModal';
+import { AuthTest } from '@/components/auth/AuthTest';
+import { FileUpload } from '@/components/FileUpload';
 import heroImage from '@/assets/hero-meeting.jpg';
 
 export default function Landing() {
   const [dragActive, setDragActive] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [showFileUpload, setShowFileUpload] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -55,6 +58,15 @@ export default function Landing() {
       setAuthMode('signup');
       setShowAuthModal(true);
     }
+  };
+
+  const handleUploadSuccess = (meetingId: string) => {
+    console.log('Upload successful:', meetingId);
+    navigate('/dashboard');
+  };
+
+  const handleUploadError = (error: string) => {
+    console.error('Upload error:', error);
   };
 
   const features = [
@@ -169,6 +181,34 @@ export default function Landing() {
           </p>
         </div>
       </footer>
+
+            {/* File Upload Section */}
+            {user && (
+              <section className="py-16 px-4 sm:px-6 lg:px-8">
+                <div className="max-w-7xl mx-auto">
+                  <div className="text-center mb-8">
+                    <h2 className="text-3xl font-bold mb-4">Upload Your Meeting</h2>
+                    <p className="text-muted-foreground">
+                      Get started by uploading your first meeting recording
+                    </p>
+                  </div>
+                  <FileUpload 
+                    onUploadSuccess={handleUploadSuccess}
+                    onUploadError={handleUploadError}
+                  />
+                </div>
+              </section>
+            )}
+
+            {/* Auth Test - Remove in production */}
+            {process.env.NODE_ENV === 'development' && (
+              <section className="py-16 px-4 sm:px-6 lg:px-8">
+                <div className="max-w-7xl mx-auto">
+                  <h2 className="text-3xl font-bold text-center mb-8">Auth Test (Dev Only)</h2>
+                  <AuthTest />
+                </div>
+              </section>
+            )}
 
       {/* Auth Modal */}
       <AuthModal 

@@ -167,6 +167,42 @@ class ApiService {
     });
     return response.json();
   }
+
+  // User profile endpoints
+  async getUserProfile(userId: string) {
+    const response = await this.makeRequest(`/user/${userId}`);
+    return response.json();
+  }
+
+  async updateUserProfile(userId: string, profileData: {
+    name?: string;
+    email?: string;
+    photo_url?: string;
+  }) {
+    const response = await this.makeRequest(`/user/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+    return response.json();
+  }
+
+  async getUserStats(userId: string) {
+    const response = await this.makeRequest(`/user/${userId}/stats`);
+    return response.json();
+  }
+
+  async registerUser(userData: {
+    user_id: string;
+    name: string;
+    email: string;
+    photo_url?: string;
+  }) {
+    const response = await this.makeRequest('/user/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+    return response.json();
+  }
 }
 
 export const apiService = new ApiService();

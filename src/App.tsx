@@ -16,15 +16,18 @@ import Calendar from "./pages/Calendar";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
+// Auth Test Component (Dev only)
+import { AuthTest } from "./components/auth/AuthTest";
+
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <AuthProvider>
+          <Toaster />
+          <Sonner />
           <div className="min-h-screen bg-background">
             <Navbar />
             <Routes>
@@ -54,11 +57,15 @@ const App = () => (
                   <Settings />
                 </ProtectedRoute>
               } />
+              {/* Auth Test Route - Dev only */}
+              {process.env.NODE_ENV === 'development' && (
+                <Route path="/auth-test" element={<AuthTest />} />
+              )}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>
-        </BrowserRouter>
-      </AuthProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );

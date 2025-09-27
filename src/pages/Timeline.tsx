@@ -1,8 +1,11 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAuth } from '@/contexts/AuthContext';
+import { apiService } from '@/lib/api';
 import { 
   Play, 
   Pause, 
@@ -12,69 +15,57 @@ import {
   CheckCircle,
   AlertCircle,
   HelpCircle,
-  Clock
+  Clock,
+  Loader2
 } from 'lucide-react';
 
 export default function Timeline() {
   const [selectedBlock, setSelectedBlock] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const { user } = useAuth();
 
-  const timelineBlocks = [
-    {
-      id: 1,
-      timeRange: "00:00 - 02:00",
-      type: "discussion",
-      title: "Meeting Introduction & Agenda Review",
-      summary: "Welcome and overview of today's product strategy discussion",
-      tags: [],
-      transcript: "Welcome everyone to our product strategy review. Today we'll be discussing Q1 priorities, resource allocation, and timeline adjustments. Let's start by reviewing our agenda items..."
-    },
-    {
-      id: 2,
-      timeRange: "02:00 - 05:30",
-      type: "decision",
-      title: "Mobile App Release Timeline",
-      summary: "Confirmed March release date for mobile application",
-      tags: ["decision"],
-      transcript: "After reviewing the development progress, we're confirming the March 15th release date for the mobile app. Sarah has confirmed the team can deliver all core features by this deadline."
-    },
-    {
-      id: 3,
-      timeRange: "05:30 - 08:15",
-      type: "action",
-      title: "Payment Integration Research",
-      summary: "Action item assigned to research payment providers",
-      tags: ["action-item"],
-      transcript: "John, we need you to research payment integration providers and present your findings by next Thursday. Focus on Stripe, PayPal, and Square integration capabilities."
-    },
-    {
-      id: 4,
-      timeRange: "08:15 - 12:00",
-      type: "discussion",
-      title: "Marketing Strategy Discussion",
-      summary: "Overview of Q1 marketing campaigns and messaging",
-      tags: [],
-      transcript: "Moving on to our marketing strategy. Lisa, can you walk us through the proposed Q1 campaigns? We need to align our messaging with the product roadmap..."
-    },
-    {
-      id: 5,
-      timeRange: "12:00 - 15:30",
-      type: "unresolved",
-      title: "Budget Allocation Questions",
-      summary: "Discussion about resource allocation raised unresolved questions",
-      tags: ["unresolved"],
-      transcript: "We discussed increasing the development team size, but the exact budget implications weren't fully resolved. This needs follow-up with finance before we can proceed."
-    },
-    {
-      id: 6,
-      timeRange: "15:30 - 18:00",
-      type: "decision",
-      title: "Team Expansion Approval",
-      summary: "Approved hiring 2 additional developers",
-      tags: ["decision"],
-      transcript: "Based on our workload analysis, we're approving the hire of 2 additional senior developers for the mobile team. HR will begin the recruitment process immediately."
-    }
-  ];
+  // Fetch user meetings
+  const { data: meetingsData, isLoading: meetingsLoading } = useQuery({
+    queryKey: ['meetings', user?.id],
+    queryFn: () => apiService.getUserMeetings(user?.id || ''),
+    enabled: !!user?.id,
+  });
+
+  // Fetch user tasks for timeline
+  const { data: tasksData, isLoading: tasksLoading } = useQuery({
+    queryKey: ['tasks', user?.id],
+    queryFn: () => apiService.getUserTasks(user?.id || ''),
+    enabled: !!user?.id,
+  });
+
+  const meetings = meetingsData?.meetings || [];
+  const tasks = tasksData?.tasks || [];
+
+  // Create timeline blocks from tasks and meetings
+  const timelineBlocks = tasks.map((task, index) => ({
+    id: task.id,
+    timeRange: `${index * 5}:00 - ${(index + 1) * 5}:00`,
+    type: task.category === 'decision' ? 'decision' : 
+          task.category === 'action-item' ? 'action' : 
+          task.category === 'unresolved' ? 'unresolved' : 'discussion',
+    title: task.name,
+    summary: task.description || 'No description available',
+    tags: [task.category],
+    transcript: task.description || 'No transcript available',
+    task: task
+  }));
+
+  // Loading state
+  if (meetingsLoading || tasksLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading timeline...</p>
+        </div>
+      </div>
+    );
+  }
 
   const getTagStyle = (tag: string) => {
     switch (tag) {
