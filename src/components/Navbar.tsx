@@ -1,6 +1,8 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { AuthModal } from '@/components/auth/AuthModal';
+import { useState } from 'react';
 import { 
   LayoutDashboard, 
   Clock,
@@ -8,12 +10,15 @@ import {
   Calendar,
   Settings,
   LogOut,
-  Mic
+  Mic,
+  User
 } from 'lucide-react';
 
 export const Navbar = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -24,6 +29,16 @@ export const Navbar = () => {
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleSignIn = () => {
+    setAuthMode('login');
+    setShowAuthModal(true);
+  };
+
+  const handleSignUp = () => {
+    setAuthMode('signup');
+    setShowAuthModal(true);
+  };
 
   return (
     <nav className="bg-card border-b border-border shadow-custom">
@@ -74,16 +89,23 @@ export const Navbar = () => {
             </div>
           ) : (
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" onClick={handleSignIn}>
                 Sign In
               </Button>
-              <Button size="sm" className="gradient-primary">
+              <Button size="sm" className="gradient-primary" onClick={handleSignUp}>
                 Get Started
               </Button>
             </div>
           )}
         </div>
       </div>
+      
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        defaultMode={authMode}
+      />
     </nav>
   );
 };

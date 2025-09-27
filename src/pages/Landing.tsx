@@ -4,11 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { AuthModal } from '@/components/auth/AuthModal';
 import heroImage from '@/assets/hero-meeting.jpg';
 
 export default function Landing() {
   const [dragActive, setDragActive] = useState(false);
-  const { login } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const handleDrag = (e: React.DragEvent) => {
@@ -36,9 +39,22 @@ export default function Landing() {
     // Handle file upload logic here
   };
 
-  const handleDemo = async () => {
-    await login('demo@example.com', 'demo');
-    navigate('/dashboard');
+  const handleDemo = () => {
+    if (user) {
+      navigate('/dashboard');
+    } else {
+      setAuthMode('login');
+      setShowAuthModal(true);
+    }
+  };
+
+  const handleGetStarted = () => {
+    if (user) {
+      navigate('/dashboard');
+    } else {
+      setAuthMode('signup');
+      setShowAuthModal(true);
+    }
   };
 
   const features = [
@@ -92,9 +108,9 @@ export default function Landing() {
                     <h3 className="text-lg font-semibold mb-2">Drop your meeting recording here</h3>
                     <p className="text-muted-foreground mb-4">Support for MP3, MP4, WAV, and more</p>
                     <div className="flex gap-3 justify-center">
-                      <Button className="gradient-primary">
+                      <Button className="gradient-primary" onClick={handleGetStarted}>
                         <Upload className="w-4 h-4 mr-2" />
-                        Select File
+                        Get Started
                       </Button>
                       <Button variant="outline" onClick={handleDemo}>
                         <Play className="w-4 h-4 mr-2" />
@@ -153,6 +169,13 @@ export default function Landing() {
           </p>
         </div>
       </footer>
+
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        defaultMode={authMode}
+      />
     </div>
   );
 }
