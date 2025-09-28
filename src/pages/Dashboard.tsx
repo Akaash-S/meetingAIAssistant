@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import RecordingControls from '@/components/RecordingControls';
 import { FileUpload } from '@/components/FileUpload';
+import { TranscriptionStatus } from '@/components/TranscriptionStatus';
 import { 
   FileText, 
   Users, 
@@ -21,7 +22,9 @@ import {
   Loader2,
   Mic,
   MicOff,
-  Upload
+  Upload,
+  Zap,
+  Play
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -211,6 +214,53 @@ export default function Dashboard() {
               </ScrollArea>
             </CardContent>
           </Card>
+
+          {/* Transcription Status */}
+          {meetings.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="w-5 h-5" />
+                  Transcription Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {meetings
+                    .filter(meeting => 
+                      meeting.status === 'uploaded' || 
+                      meeting.status === 'transcribing' || 
+                      meeting.status === 'transcribed' || 
+                      meeting.status === 'transcription_error'
+                    )
+                    .slice(0, 3)
+                    .map((meeting) => (
+                      <TranscriptionStatus
+                        key={meeting.id}
+                        meetingId={meeting.id}
+                        meetingTitle={meeting.title}
+                        status={meeting.status}
+                        onStatusChange={(newStatus) => {
+                          // Update the meeting status in the local state
+                          // This will trigger a refetch of the meetings data
+                        }}
+                      />
+                    ))}
+                  {meetings.filter(meeting => 
+                    meeting.status === 'uploaded' || 
+                    meeting.status === 'transcribing' || 
+                    meeting.status === 'transcribed' || 
+                    meeting.status === 'transcription_error'
+                  ).length === 0 && (
+                    <div className="text-center py-4 text-muted-foreground">
+                      <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No meetings pending transcription</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">

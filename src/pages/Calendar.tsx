@@ -16,7 +16,16 @@ import {
   CheckCircle2,
   AlertTriangle,
   ExternalLink,
-  Loader2
+  Loader2,
+  FileText,
+  Target,
+  Zap,
+  TrendingUp,
+  CalendarDays,
+  MapPin,
+  User,
+  Tag,
+  Link
 } from 'lucide-react';
 
 export default function Calendar() {
@@ -49,7 +58,7 @@ export default function Calendar() {
   const upcomingTasks = upcomingTasksData?.tasks || [];
   const overdueTasks = overdueTasksData?.tasks || [];
 
-  // Create notifications from tasks
+  // Create enhanced notifications from tasks
   const notifications = [
     ...overdueTasks.map(task => ({
       id: `overdue-${task.id}`,
@@ -57,7 +66,14 @@ export default function Calendar() {
       message: `${task.name} is overdue`,
       time: "Now",
       type: "warning" as const,
-      unread: true
+      unread: true,
+      priority: task.priority,
+      effort: task.effort,
+      assignee: task.owner,
+      tags: task.tags ? JSON.parse(task.tags) : [],
+      dependencies: task.dependencies ? JSON.parse(task.dependencies) : [],
+      context: task.context,
+      meeting_id: task.meeting_id
     })),
     ...upcomingTasks.slice(0, 3).map(task => ({
       id: `upcoming-${task.id}`,
@@ -65,7 +81,14 @@ export default function Calendar() {
       message: `${task.name} due ${task.deadline ? new Date(task.deadline).toLocaleDateString() : 'soon'}`,
       time: "1 hour ago",
       type: "info" as const,
-      unread: true
+      unread: true,
+      priority: task.priority,
+      effort: task.effort,
+      assignee: task.owner,
+      tags: task.tags ? JSON.parse(task.tags) : [],
+      dependencies: task.dependencies ? JSON.parse(task.dependencies) : [],
+      context: task.context,
+      meeting_id: task.meeting_id
     })),
     ...tasks.filter(t => t.status === 'completed').slice(0, 2).map(task => ({
       id: `completed-${task.id}`,
@@ -73,7 +96,14 @@ export default function Calendar() {
       message: `${task.name} has been completed`,
       time: "2 hours ago",
       type: "success" as const,
-      unread: false
+      unread: false,
+      priority: task.priority,
+      effort: task.effort,
+      assignee: task.owner,
+      tags: task.tags ? JSON.parse(task.tags) : [],
+      dependencies: task.dependencies ? JSON.parse(task.dependencies) : [],
+      context: task.context,
+      meeting_id: task.meeting_id
     }))
   ];
 
@@ -213,9 +243,83 @@ export default function Calendar() {
                                   {notification.time}
                                 </span>
                               </div>
-                              <p className="text-sm text-muted-foreground">
+                              <p className="text-sm text-muted-foreground mb-2">
                                 {notification.message}
                               </p>
+                              
+                              {/* Enhanced task information */}
+                              <div className="space-y-2">
+                                {/* Priority and Effort */}
+                                <div className="flex gap-2">
+                                  {notification.priority && (
+                                    <Badge 
+                                      variant={notification.priority === 'high' ? 'destructive' : 
+                                              notification.priority === 'medium' ? 'default' : 'secondary'}
+                                      className="text-xs"
+                                    >
+                                      {notification.priority === 'high' && <Zap className="w-3 h-3 mr-1" />}
+                                      {notification.priority === 'medium' && <Target className="w-3 h-3 mr-1" />}
+                                      {notification.priority === 'low' && <TrendingUp className="w-3 h-3 mr-1" />}
+                                      {notification.priority}
+                                    </Badge>
+                                  )}
+                                  {notification.effort && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {notification.effort}/5 effort
+                                    </Badge>
+                                  )}
+                                </div>
+
+                                {/* Assignee and Meeting */}
+                                <div className="flex gap-4 text-xs text-muted-foreground">
+                                  {notification.assignee && (
+                                    <div className="flex items-center gap-1">
+                                      <User className="w-3 h-3" />
+                                      {notification.assignee}
+                                    </div>
+                                  )}
+                                  {notification.meeting_id && (
+                                    <div className="flex items-center gap-1">
+                                      <FileText className="w-3 h-3" />
+                                      Meeting {notification.meeting_id.slice(0, 8)}...
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Tags */}
+                                {notification.tags && notification.tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {notification.tags.slice(0, 3).map((tag, index) => (
+                                      <Badge key={index} variant="outline" className="text-xs">
+                                        <Tag className="w-2 h-2 mr-1" />
+                                        {tag}
+                                      </Badge>
+                                    ))}
+                                    {notification.tags.length > 3 && (
+                                      <Badge variant="outline" className="text-xs">
+                                        +{notification.tags.length - 3}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Dependencies */}
+                                {notification.dependencies && notification.dependencies.length > 0 && (
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Link className="w-3 h-3" />
+                                    {notification.dependencies.length} dependencies
+                                  </div>
+                                )}
+
+                                {/* Context */}
+                                {notification.context && (
+                                  <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                                    <FileText className="w-3 h-3 inline mr-1" />
+                                    {notification.context}
+                                  </div>
+                                )}
+                              </div>
+
                               {notification.unread && (
                                 <div className="flex gap-2 mt-3">
                                   <Button variant="outline" size="sm">

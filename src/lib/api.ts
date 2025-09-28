@@ -64,12 +64,32 @@ class ApiService {
     return response.json();
   }
 
-  // Transcribe meeting
+  // Perfect transcription - Start transcription
   async transcribeMeeting(meetingId: string, userId: string) {
     const response = await this.makeRequest(`/transcribe/${meetingId}`, {
       method: 'POST',
       body: JSON.stringify({ user_id: userId }),
     });
+    return response.json();
+  }
+
+  // Perfect transcription - Auto-transcribe meeting
+  async autoTranscribeMeeting(meetingId: string) {
+    const response = await this.makeRequest(`/transcribe/${meetingId}`, {
+      method: 'POST',
+    });
+    return response.json();
+  }
+
+  // Perfect transcription - Get detailed status
+  async getTranscriptionStatus(meetingId: string) {
+    const response = await this.makeRequest(`/transcribe/${meetingId}/status`);
+    return response.json();
+  }
+
+  // Get upload status
+  async getUploadStatus(meetingId: string) {
+    const response = await this.makeRequest(`/upload/status/${meetingId}`);
     return response.json();
   }
 
